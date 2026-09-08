@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Zikr Counter — Speech Matching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Amiri&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #10312D;
+    --panel: #16403A;
+    --panel-2: #1B4A42;
+    --accent: #C69749;
+    --ink: #EDE6D5;
+    --muted: #8FA89E;
+    --danger: #B4685A;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: radial-gradient(120% 140% at 50% -10%, var(--panel) 0%, var(--bg) 60%);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding: 24px 20px 40px;
+  }
+  .app{
+    width:100%;
+    max-width: 400px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 22px;
+  }
+
+  .status{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-size: 13px;
+    color: var(--muted);
+    min-height: 20px;
+    text-align:center;
+  }
+  .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: var(--muted);
+    flex-shrink:0;
+    transition: background 0.2s ease;
+  }
+  .dot.live{ background: var(--accent); animation: breathe 1.8s ease-in-out infinite; }
+  @keyframes breathe{
+    0%,100%{ box-shadow: 0 0 0 0 rgba(198,151,73,0.45); }
+    50%{ box-shadow: 0 0 0 7px rgba(198,151,73,0); }
+  }
+
+  .count-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 6px;
+    user-select:none;
+  }
+  .count{
+    font-family:'Fraunces', serif;
+    font-weight: 500;
+    font-size: 96px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: transform 0.15s ease;
+  }
+  .count.pulse{ transform: scale(1.06); color: var(--accent); }
+  .of-target{ font-size: 14px; color: var(--muted); }
+
+  /* target picker */
+  .picker{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .picker-label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .azkar-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:8px;
+  }
+  .azkar-btn{
+    padding: 10px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: var(--panel-2);
+    color: var(--ink);
+    font-size: 13px;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    text-align:center;
+  }
+  .azkar-btn.active{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1B2E1F;
+    font-weight: 600;
+  }
+
+  .selected-card{
+    width:100%;
+    background: var(--panel-2);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display:flex;
+    flex-direction:column;
+    gap: 6px;
+    text-align:center;
+  }
+  .selected-card .arabic{
+    font-family:'Amiri', serif;
+    font-size: 22px;
+    line-height:1.6;
+    direction: rtl;
+  }
+  .selected-card .translit{
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  textarea.custom-input{
+    width:100%;
+    min-height: 60px;
+    background: var(--panel-2);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: 'Amiri', serif;
+    font-size: 18px;
+    padding: 10px 12px;
+    direction: rtl;
+    resize: vertical;
+  }
+  .lang-toggle{
+    display:flex;
+    gap:8px;
+  }
+  .lang-toggle button{
+    flex:1;
+    padding: 8px 0;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    cursor:pointer;
+  }
+  .lang-toggle button.active{
+    background: var(--accent);
+    color:#1B2E1F;
+    font-weight:600;
+    border-color: var(--accent);
+  }
+
+  .targets{
+    display:flex;
+    gap:8px;
+    flex-wrap: wrap;
+    justify-content:center;
+  }
+  .pill{
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    cursor:pointer;
+  }
+  .pill.active{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1B2E1F;
+    font-weight: 600;
+  }
+  .pill.custom-num{
+    width: 64px;
+    text-align:center;
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .listen-btn{
+    width: 100%;
+    padding: 15px 0;
+    border-radius: 14px;
+    border: none;
+    font-weight: 600;
+    font-size: 16px;
+    cursor:pointer;
+    background: var(--accent);
+    color: #1B2E1F;
+  }
+  .listen-btn:active{ transform: scale(0.98); }
+  .listen-btn.on{
+    background: var(--panel-2);
+    color: var(--ink);
+    border: 1px solid rgba(198,151,73,0.5);
+  }
+
+  .row{ display:flex; gap:10px; width:100%; }
+  .btn-sm{
+    flex:1;
+    padding: 11px 0;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--ink);
+    font-size: 14px;
+    cursor:pointer;
+  }
+
+  .strict{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .strict label{
+    font-size: 12px;
+    color: var(--muted);
+    display:flex;
+    justify-content:space-between;
+  }
+  input[type=range]{ width:100%; accent-color: var(--accent); }
+
+  .transcript{
+    width:100%;
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-height: 34px;
+    text-align:center;
+    word-break: break-word;
+  }
+
+  .note{
+    font-size: 12px;
+    color: var(--muted);
+    text-align:center;
+    line-height:1.5;
+    max-width: 340px;
+  }
+  .note.err{ color: var(--danger); }
+
+  .flash-overlay{
+    position:fixed; inset:0;
+    background: var(--accent);
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 0.25s ease;
+    z-index: 5;
+  }
+  .flash-overlay.show{ opacity: 0.18; }
+</style>
+</head>
+<body>
+
+<div class="flash-overlay" id="flash"></div>
+
+<div class="app">
+
+  <div class="status">
+    <div class="dot" id="dot"></div>
+    <span id="statusText">Not listening</span>
+  </div>
+
+  <div class="count-wrap">
+    <div class="count" id="count">0</div>
+    <div class="of-target" id="ofTarget">of 33</div>
+  </div>
+
+  <div class="picker">
+    <div class="picker-label">What are you reciting?</div>
+    <div class="azkar-grid" id="azkarGrid"></div>
+  </div>
+
+  <div class="selected-card" id="selectedCard">
+    <div class="arabic" id="selArabic"></div>
+    <div class="translit" id="selTranslit"></div>
+  </div>
+
+  <div id="customWrap" style="display:none; width:100%; flex-direction:column; gap:8px;">
+    <div class="lang-toggle" id="langToggle">
+      <button data-lang="ar-SA" class="active">Arabic</button>
+      <button data-lang="en-US">English</button>
+    </div>
+    <textarea class="custom-input" id="customText" placeholder="اكتب هنا الذكر الذي تريد عده"></textarea>
+  </div>
+
+  <div class="targets" id="counts">
+    <button class="pill" data-target="33">33</button>
+    <button class="pill active" data-target="99">99</button>
+    <button class="pill" data-target="100">100</button>
+    <input class="pill custom-num" id="customCount" type="number" placeholder="custom" min="1">
+  </div>
+
+  <button class="listen-btn" id="listenBtn">Start listening</button>
+
+  <div class="row">
+    <button class="btn-sm" id="minusBtn">−1</button>
+    <button class="btn-sm" id="resetBtn">Reset</button>
+    <button class="btn-sm" id="plusBtn">+1 (manual)</button>
+  </div>
+
+  <div class="strict">
+    <label><span>Match strictness</span><span id="strictVal">Balanced</span></label>
+    <input type="range" id="strictSlider" min="1" max="9" value="5">
+  </div>
+
+  <div class="transcript" id="transcript">Heard: —</div>
+
+  <div class="note" id="note">
+    Pick what you're reciting above, tap "Start listening," and allow microphone access. It only counts when the words roughly match what you selected — background noise and unrelated talk are ignored. Needs an internet connection (audio is briefly sent to your browser's speech service to transcribe).
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // ---- Azkar library ----
+  const AZKAR = {
+    subhanallah: { label: 'SubhanAllah', arabic: 'سُبْحَانَ اللَّهِ', translit: 'SubhanAllah', lang: 'ar-SA' },
+    alhamdulillah: { label: 'Alhamdulillah', arabic: 'الْحَمْدُ لِلَّهِ', translit: 'Alhamdulillah', lang: 'ar-SA' },
+    allahuakbar: { label: 'Allahu Akbar', arabic: 'اللَّهُ أَكْبَرُ', translit: 'Allahu Akbar', lang: 'ar-SA' },
+    lailaha: { label: 'La ilaha illallah', arabic: 'لَا إِلَٰهَ إِلَّا اللَّهُ', translit: 'La ilaha illallah', lang: 'ar-SA' },
+    astaghfirullah: { label: 'Astaghfirullah', arabic: 'أَسْتَغْفِرُ اللَّهَ', translit: 'Astaghfirullah', lang: 'ar-SA' },
+    subhanwabihamdi: { label: 'Subhanallahi wa bihamdih', arabic: 'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', translit: 'SubhanAllahi wa bihamdih', lang: 'ar-SA' },
+    lahawla: { label: 'La hawla wala quwwata', arabic: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', translit: 'La hawla wala quwwata illa billah', lang: 'ar-SA' },
+    darood: { label: 'Darood (short)', arabic: 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ', translit: "Allahumma salli 'ala Muhammad", lang: 'ar-SA' },
+    ayatulkursi: { label: 'Ayatul Kursi', arabic: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ وَلَا يَئُودُهُ حِفْظُهُمَا وَهُوَ الْعَلِيُّ الْعَظِيمُ', translit: 'Ayatul Kursi (full)', lang: 'ar-SA', longForm: true },
+    fatiha: { label: 'Surah Al-Fatiha', arabic: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ الرَّحْمَٰنِ الرَّحِيمِ مَالِكِ يَوْمِ الدِّينِ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ', translit: 'Surah Al-Fatiha (full)', lang: 'ar-SA', longForm: true },
+    custom: { label: 'Custom', arabic: '', translit: 'Type your own below', lang: 'ar-SA' }
+  };
+
+  const azkarGrid = document.getElementById('azkarGrid');
+  const selArabic = document.getElementById('selArabic');
+  const selTranslit = document.getElementById('selTranslit');
+  const customWrap = document.getElementById('customWrap');
+  const customText = document.getElementById('customText');
+  const langToggle = document.getElementById('langToggle');
+  const transcriptEl = document.getElementById('transcript');
+  const note = document.getElementById('note');
+  const flash = document.getElementById('flash');
+  const listenBtn = document.getElementById('listenBtn');
+  const dot = document.getElementById('dot');
+  const statusText = document.getElementById('statusText');
+  const countEl = document.getElementById('count');
+  const ofTargetEl = document.getElementById('ofTarget');
+  const strictSlider = document.getElementById('strictSlider');
+  const strictVal = document.getElementById('strictVal');
+
+  let selectedKey = 'subhanallah';
+  let customLang = 'ar-SA';
+  let target = 99;
+  let count = 0;
+  let buffer = '';
+  let listening = false;
+  let shouldRestart = false;
+  let recognition;
+
+  // render azkar grid
+  Object.entries(AZKAR).forEach(([key, item]) => {
+    const btn = document.createElement('button');
+    btn.className = 'azkar-btn' + (key === selectedKey ? ' active' : '');
+    btn.textContent = item.label;
+    btn.dataset.key = key;
+    azkarGrid.appendChild(btn);
+  });
+
+  function renderSelected(){
+    const item = AZKAR[selectedKey];
+    document.querySelectorAll('.azkar-btn').forEach(b => b.classList.toggle('active', b.dataset.key === selectedKey));
+    if (selectedKey === 'custom'){
+      customWrap.style.display = 'flex';
+      document.getElementById('selectedCard').style.display = 'none';
+    } else {
+      customWrap.style.display = 'none';
+      document.getElementById('selectedCard').style.display = 'flex';
+      selArabic.textContent = item.arabic;
+      selTranslit.textContent = item.translit;
+    }
+  }
+  renderSelected();
+
+  azkarGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.azkar-btn');
+    if (!btn) return;
+    selectedKey = btn.dataset.key;
+    buffer = '';
+    renderSelected();
+  });
+
+  langToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-lang]');
+    if (!btn) return;
+    customLang = btn.dataset.lang;
+    langToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    customText.style.direction = customLang === 'ar-SA' ? 'rtl' : 'ltr';
+    customText.placeholder = customLang === 'ar-SA' ? 'اكتب هنا الذكر الذي تريد عده' : 'Type the phrase you want counted';
+  });
+
+  function getTargetPhrase(){
+    if (selectedKey === 'custom') return customText.value.trim();
+    return AZKAR[selectedKey].arabic;
+  }
+  function getTargetLang(){
+    if (selectedKey === 'custom') return customLang;
+    return AZKAR[selectedKey].lang;
+  }
+  function isLongForm(){
+    return selectedKey === 'ayatulkursi' || selectedKey === 'fatiha';
+  }
+
+  // ---- count target pills ----
+  document.getElementById('counts').addEventListener('click', (e) => {
+    const btn = e.target.closest('.pill[data-target]');
+    if (!btn) return;
+    document.getElementById('customCount').value = '';
+    setTarget(+btn.dataset.target);
+  });
+  document.getElementById('customCount').addEventListener('change', function(){
+    const v = parseInt(this.value, 10);
+    if (v > 0){
+      document.querySelectorAll('.pill[data-target]').forEach(p => p.classList.remove('active'));
+      setTarget(v);
+    }
+  });
+  function setTarget(t){
+    target = t;
+    ofTargetEl.textContent = 'of ' + t;
+    document.querySelectorAll('.pill[data-target]').forEach(p => p.classList.toggle('active', +p.dataset.target === t));
+  }
+  setTarget(target);
+
+  // ---- strictness ----
+  function strictLabel(v){
+    if (v <= 2) return 'Very loose';
+    if (v <= 4) return 'Loose';
+    if (v <= 6) return 'Balanced';
+    if (v <= 8) return 'Strict';
+    return 'Very strict';
+  }
+  strictVal.textContent = strictLabel(+strictSlider.value);
+  strictSlider.addEventListener('input', () => strictVal.textContent = strictLabel(+strictSlider.value));
+
+  // ---- normalization + matching ----
+  function normalizeArabic(s){
+    return s
+      .replace(/[\u064B-\u0652\u0670\u06D6-\u06ED]/g, '')
+      .replace(/[إأآا]/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
+      .replace(/ؤ/g, 'و')
+      .replace(/ئ/g, 'ي')
+      .replace(/[^\u0600-\u06FF\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function normalizeLatin(s){
+    return s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function normalize(s, lang){
+    return lang === 'ar-SA' ? normalizeArabic(s) : normalizeLatin(s);
+  }
+  function coverage(bufferNorm, targetNorm){
+    const targetWords = targetNorm.split(' ').filter(Boolean);
+    if (targetWords.length === 0) return 0;
+    const bufferWords = new Set(bufferNorm.split(' ').filter(Boolean));
+    let hits = 0;
+    targetWords.forEach(w => { if (bufferWords.has(w)) hits++; });
+    return hits / targetWords.length;
+  }
+
+  function increment(){
+    count++;
+    countEl.textContent = count;
+    countEl.classList.add('pulse');
+    setTimeout(() => countEl.classList.remove('pulse'), 160);
+    if (count === target) onTargetReached();
+  }
+  function beep(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.4);
+    }catch(e){}
+  }
+  function onTargetReached(){
+    flash.classList.add('show');
+    setTimeout(() => flash.classList.remove('show'), 400);
+    beep();
+    if (navigator.vibrate) navigator.vibrate([120,60,120]);
+  }
+
+  document.getElementById('plusBtn').addEventListener('click', increment);
+  document.getElementById('minusBtn').addEventListener('click', () => {
+    count = Math.max(0, count - 1);
+    countEl.textContent = count;
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    count = 0; buffer = '';
+    countEl.textContent = count;
+  });
+
+  function handleFinalChunk(rawText){
+    const lang = getTargetLang();
+    const targetPhrase = getTargetPhrase();
+    if (!targetPhrase){
+      note.textContent = 'Type a phrase in the box above first.';
+      return;
+    }
+    const targetNorm = normalize(targetPhrase, lang);
+    const chunkNorm = normalize(rawText, lang);
+
+    buffer = (buffer + ' ' + chunkNorm).trim();
+    // cap buffer length so it doesn't grow forever without matching
+    const maxWords = isLongForm() ? 120 : 25;
+    const words = buffer.split(' ');
+    if (words.length > maxWords) buffer = words.slice(-maxWords).join(' ');
+
+    const strict = +strictSlider.value; // 1..9
+    const threshold = 0.35 + (strict - 1) * (0.5 / 8); // ~0.35 (loose) .. 0.85 (strict)
+
+    const cov = coverage(buffer, targetNorm);
+    if (cov >= threshold){
+      increment();
+      buffer = '';
+    }
+  }
+
+  function setupRecognition(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR){
+      note.classList.add('err');
+      note.textContent = 'This browser doesn\'t support speech recognition. Try Chrome on Android, or use the volume-based version instead.';
+      return null;
+    }
+    const r = new SR();
+    r.lang = getTargetLang();
+    r.continuous = true;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+
+    r.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++){
+        const res = event.results[i];
+        if (res.isFinal){
+          handleFinalChunk(res[0].transcript);
+          transcriptEl.textContent = 'Heard: ' + res[0].transcript;
+        } else {
+          interim += res[0].transcript;
+        }
+      }
+      if (interim) transcriptEl.textContent = 'Hearing… ' + interim;
+    };
+    r.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        note.classList.add('err');
+        note.textContent = 'Microphone permission was denied. Allow it in your browser settings and try again.';
+        stopListening();
+      } else if (e.error === 'network'){
+        note.classList.add('err');
+        note.textContent = 'Network issue — speech recognition needs an internet connection.';
+      }
+      // 'no-speech' and similar are transient; onend will restart it
+    };
+    r.onend = () => {
+      if (shouldRestart){
+        try { r.start(); } catch(e){}
+      } else {
+        listening = false;
+        dot.classList.remove('live');
+        listenBtn.textContent = 'Start listening';
+        listenBtn.classList.remove('on');
+        statusText.textContent = 'Not listening';
+      }
+    };
+    return r;
+  }
+
+  function startListening(){
+    note.classList.remove('err');
+    recognition = setupRecognition();
+    if (!recognition) return;
+    // refresh language in case selection changed since last setup
+    recognition.lang = getTargetLang();
+    shouldRestart = true;
+    try{
+      recognition.start();
+      listening = true;
+      buffer = '';
+      listenBtn.textContent = 'Stop listening';
+      listenBtn.classList.add('on');
+      dot.classList.add('live');
+      statusText.textContent = 'Listening — recite normally';
+      note.textContent = 'Recite your selected phrase. It only counts when the words roughly match.';
+    }catch(e){
+      note.classList.add('err');
+      note.textContent = 'Could not start the microphone. Make sure this page is loaded over https:// and try again.';
+    }
+  }
+  function stopListening(){
+    shouldRestart = false;
+    listening = false;
+    if (recognition){ try{ recognition.stop(); }catch(e){} }
+    dot.classList.remove('live');
+    listenBtn.textContent = 'Start listening';
+    listenBtn.classList.remove('on');
+    statusText.textContent = 'Not listening';
+  }
+
+  listenBtn.addEventListener('click', () => {
+    if (listening) stopListening();
+    else startListening();
+  });
+})();
+</script>
+
+</body>
+</html>
