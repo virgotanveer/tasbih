@@ -377,6 +377,8 @@
   let listening = false;
   let shouldRestart = false;
   let recognition;
+  let lastIncrementTime = 0;
+  const COOLDOWN_MS = 500; // guards against one utterance firing two final events
 
   // render azkar grid
   Object.entries(AZKAR).forEach(([key, item]) => {
@@ -545,11 +547,28 @@
     if (words.length > maxWords) buffer = words.slice(-maxWords).join(' ');
 
     const strict = +strictSlider.value; // 1..9
-    const threshold = 0.35 + (strict - 1) * (0.5 / 8); // ~0.35 (loose) .. 0.85 (strict)
+    const sliderThreshold = 0.35 + (strict - 1) * (0.5 / 8); // ~0.35 (loose) .. 0.85 (strict)
+
+    // Short phrases (few words) are too easy to "half match" — a phrase like
+    // "SubhanAllah" is only 2 words, so hearing just one of them is already
+    // 50% coverage. Require near-complete coverage for short phrases; only
+    // let the strictness slider loosen things meaningfully for long verses
+    // where perfect word-for-word transcription is unrealistic.
+    const targetWordCount = targetNorm.split(' ').filter(Boolean).length;
+    const threshold = isLongForm() ? sliderThreshold : Math.max(sliderThreshold, 0.85);
 
     const cov = coverage(buffer, targetNorm);
+    const now = Date.now();
+    const cooledDown = (now - lastIncrementTime) > COOLDOWN_MS;
+
     if (cov >= threshold){
-      increment();
+      if (cooledDown){
+        increment();
+        lastIncrementTime = now;
+      }
+      // Whether or not this counted, clear the buffer — a completed match
+      // (or a same-utterance duplicate arriving inside the cooldown window)
+      // shouldn't keep contributing leftover words to the next count.
       buffer = '';
     }
   }
